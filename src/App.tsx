@@ -4,7 +4,6 @@ import { DEFAULT_SETTINGS } from './data/settings';
 import { STAGES } from './data/stages';
 import {
   CharacterData,
-  ColorVariant,
   GameMode,
   GameScreen,
   GameSettings,
@@ -26,12 +25,7 @@ export default function App() {
 
   // Selected Match Configuration
   const [p1Character, setP1Character] = useState<CharacterData>(CHARACTERS[0]);
-  const [p1Color, setP1Color] = useState<ColorVariant>(CHARACTERS[0].colors[0]);
-
   const [p2Character, setP2Character] = useState<CharacterData>(CHARACTERS[1] || CHARACTERS[0]);
-  const [p2Color, setP2Color] = useState<ColorVariant>(
-    CHARACTERS[1]?.colors[0] || CHARACTERS[0].colors[1]
-  );
 
   const [selectedStage, setSelectedStage] = useState<StageData>(STAGES[0]);
   const [lastMatchResult, setLastMatchResult] = useState<MatchResult | null>(null);
@@ -47,14 +41,10 @@ export default function App() {
 
   const handleConfirmCharacters = (
     p1Char: CharacterData,
-    p1Clr: ColorVariant,
-    p2Char: CharacterData,
-    p2Clr: ColorVariant
+    p2Char: CharacterData
   ) => {
     setP1Character(p1Char);
-    setP1Color(p1Clr);
     setP2Character(p2Char);
-    setP2Color(p2Clr);
     setCurrentScreen('STAGE_SELECT');
   };
 
@@ -96,9 +86,7 @@ export default function App() {
       {currentScreen === 'STAGE_SELECT' && (
         <StageSelect
           p1Char={p1Character}
-          p1Color={p1Color}
           p2Char={p2Character}
-          p2Color={p2Color}
           onConfirmStage={handleConfirmStage}
           onBack={() => setCurrentScreen('CHARACTER_SELECT')}
         />
@@ -109,9 +97,7 @@ export default function App() {
         <FightScreen
           mode={gameMode}
           p1Char={p1Character}
-          p1Color={p1Color}
           p2Char={p2Character}
-          p2Color={p2Color}
           stage={selectedStage}
           settings={settings}
           onMatchEnd={handleMatchEnd}
@@ -133,13 +119,16 @@ export default function App() {
       {/* 6. OPTIONS SCREEN */}
       {currentScreen === 'OPTIONS' && (
         <OptionsScreen
-          settings={settings}
-          onUpdateSettings={setSettings}
+          currentSettings={settings}
+          onSaveSettings={(newSettings) => {
+            setSettings(newSettings);
+            setCurrentScreen('MAIN_MENU');
+          }}
           onBack={() => setCurrentScreen('MAIN_MENU')}
         />
       )}
 
-      {/* CONTROLS MODAL */}
+      {/* 7. CONTROLS MODAL */}
       {showControlsModal && (
         <ControlsModal onClose={() => setShowControlsModal(false)} />
       )}

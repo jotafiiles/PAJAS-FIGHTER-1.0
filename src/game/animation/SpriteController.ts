@@ -15,9 +15,10 @@ export class SpriteController {
   constructor(character: CharacterData) {
     this.character = character;
     this.spriteLoader = SpriteLoader.getInstance();
+    this.spriteLoader.preloadCharacter(character);
   }
 
-  public preloadVariant(variant: ColorVariant) {
+  public preloadVariant(variant?: ColorVariant) {
     this.spriteLoader.preloadCharacter(this.character, variant);
   }
 
@@ -90,15 +91,15 @@ export class SpriteController {
     ctx: CanvasRenderingContext2D,
     state: FighterState,
     animTime: number,
-    color: ColorVariant,
-    facing: number,
-    isHit: boolean,
-    hitstop: boolean,
+    color?: ColorVariant,
+    facing: number = 1,
+    isHit: boolean = false,
+    hitstop: boolean = false,
     vx: number = 0,
     currentAttack?: AttackDefinition | null
   ) {
     const action = this.getActionFromState(state, vx, facing, currentAttack);
-    const spriteFrame = this.spriteLoader.getFrameImage(this.character, color, action, animTime);
+    const spriteFrame = this.spriteLoader.getFrameImage(this.character, action, animTime, color);
 
     if (spriteFrame && spriteFrame.image) {
       const img = spriteFrame.image;
@@ -124,6 +125,26 @@ export class SpriteController {
     }
 
     // High fidelity procedural pixel fighter fallback
-    ProceduralSpriteRenderer.renderFighter(ctx, state, animTime, color, facing, isHit, hitstop, this.character.id);
+    const fallbackColor: ColorVariant = color || this.character.colors?.[0] || {
+      id: 'default',
+      name: 'Default',
+      primaryColor: '#18181b',
+      secondaryColor: '#ff4e00',
+      hairColor: '#09090b',
+      skinColor: '#8d5524',
+      pantColor: '#27272a',
+      accentColor: '#ff6524',
+    };
+
+    ProceduralSpriteRenderer.renderFighter(
+      ctx,
+      state,
+      animTime,
+      fallbackColor,
+      facing,
+      isHit,
+      hitstop,
+      this.character.id
+    );
   }
 }

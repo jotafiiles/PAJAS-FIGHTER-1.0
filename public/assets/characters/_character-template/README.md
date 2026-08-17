@@ -1,65 +1,62 @@
-# GUÍA DE PLANTILLA DE PERSONAJE — PAJAS FIGHTER
-Desarrollado por Que Paja Records
+# 🥊 PLANTILLA OFICIAL DE PERSONAJE — PAJAS FIGHTER (PLUG-AND-PLAY)
+**Desarrollado por Que Paja Records**
 
-Esta carpeta `_character-template` es la plantilla de referencia oficial para agregar nuevos luchadores al roster de PAJAS FIGHTER de manera 100% modular y data-driven.
+Esta carpeta `_character-template` contiene la estructura completa y autosuficiente para agregar nuevos personajes al juego de forma 100% **Plug-and-Play**.
 
 ---
 
 ## 📁 ESTRUCTURA DE ARCHIVOS DE UN PERSONAJE
 
+Cada personaje es completamente data-driven y vive dentro de su propia carpeta:
+
 ```
-public/assets/characters/tu-personaje/
-├── character.json          <- Configuración completa (stats, ataques, animaciones, variantes)
-├── portrait.png            <- Retrato para el selector y HUD (256x256 o similar)
-├── select.png              <- Ilustración de cuerpo entero / tarjeta (opcional)
-├── sprites/                <- Carpetas con secuencias PNG por animación
-│   ├── idle/               <- 01.png, 02.png, 03.png...
-│   ├── walk/               <- 01.png, 02.png...
-│   ├── jump/               <- 01.png, 02.png...
-│   ├── crouch/             <- 01.png...
-│   ├── punch-light/        <- 01.png, 02.png...
-│   ├── punch-heavy/        <- 01.png, 02.png...
-│   ├── kick-light/         <- 01.png, 02.png...
-│   ├── kick-heavy/         <- 01.png, 02.png...
-│   ├── special/            <- 01.png, 02.png...
-│   ├── hit/                <- 01.png, 02.png...
-│   ├── block/              <- 01.png...
-│   ├── knockdown/          <- 01.png, 02.png...
-│   ├── get-up/             <- 01.png...
-│   ├── victory/            <- 01.png, 02.png...
-│   └── defeat/             <- 01.png...
-└── variants/               <- Variantes de trajes o paletas alternativas
-    ├── default/
-    ├── alt-1/
-    └── alt-2/
+public/assets/characters/tu-nuevo-personaje/
+├── character.json          <- Definición técnica (nombre, stats, animaciones, ataques, hitbox)
+├── portrait.png            <- Retrato para el selector de personajes y HUD
+├── README.md               <- Esta guía de referencia
+└── sprites/                <- Secuencias numeradas de sprites PNG
+    ├── idle/               <- 01.png, 02.png, 03.png, 04.png, 05.png
+    ├── walk/               <- 01.png, 02.png, 03.png, 04.png, 05.png, 06.png
+    ├── walk-back/          <- 01.png, 02.png, 03.png, 04.png, 05.png, 06.png
+    ├── jump/               <- 01.png, 02.png, 03.png, 04.png
+    ├── crouch/             <- 01.png, 02.png
+    ├── block/              <- 01.png, 02.png
+    ├── hit/                <- 01.png, 02.png, 03.png
+    ├── knockdown/          <- 01.png, 02.png, 03.png, 04.png, 05.png
+    ├── get-up/             <- 01.png, 02.png, 03.png, 04.png
+    ├── victory/            <- 01.png, 02.png, 03.png, 04.png, 05.png, 06.png
+    ├── defeat/             <- 01.png, 02.png, 03.png, 04.png
+    ├── punch-light/        <- 01.png, 02.png, 03.png, 04.png
+    ├── punch-heavy/        <- 01.png, 02.png, 03.png, 04.png, 05.png, 06.png
+    ├── kick-light/         <- 01.png, 02.png, 03.png, 04.png
+    ├── kick-heavy/         <- 01.png, 02.png, 03.png, 04.png, 05.png, 06.png
+    └── special/            <- 01.png, 02.png, 03.png, 04.png, 05.png, 06.png, 07.png, 08.png
 ```
 
 ---
 
-## ⚙️ CÓMO AGREGAR UN NUEVO PERSONAJE EN 3 PASOS
+## ⚡ CÓMO AGREGAR UN PERSONAJE PASO A PASO (SIN TOCAR CÓDIGO)
 
-### Paso 1: Duplicar esta carpeta
-Copia `_character-template` a `public/assets/characters/[id-de-tu-personaje]/`.
-Ejemplo: `public/assets/characters/mc-ritmo/`
-
-### Paso 2: Editar `character.json`
-Configura el nombre, estadísticas, ataques, cajas de colisión y rutas de animación.
-
-### Paso 3: Registrar el personaje en el Roster
-En `src/data/characters/index.ts` o creando `src/data/characters/mcRitmo.ts`:
-```ts
-import { CharacterData } from '../../types';
-import mcRitmoJson from '../../../public/assets/characters/mc-ritmo/character.json';
-
-export const MC_RITMO: CharacterData = mcRitmoJson as CharacterData;
-```
-Y agrégalo a la lista `PLAYABLE_CHARACTERS`.
-
-¡Listo! El personaje aparecerá automáticamente en la pantalla de selección, con su tarjeta, estadísticas, movimientos, variantes y animaciones.
+1. **Copiar la carpeta:** Copia la carpeta `_character-template` y cámbiale el nombre a tu personaje dentro de `public/assets/characters/` (ejemplo: `public/assets/characters/nuevo-personaje/`).
+2. **Editar `character.json`:** Ajusta el `id`, `name`, `displayName`, `tagline`, `description`, `stats`, `attacks` y `animations` (cantidad de fotogramas, FPS, etc.).
+3. **Colocar los sprites:** Guarda tus fotogramas PNG (`01.png`, `02.png`, `03.png`...) en cada subcarpeta de animación dentro de `sprites/` y tu imagen de retrato en `portrait.png`.
+4. **Registrar en el manifiesto:** Agrega el nombre de la carpeta a `public/assets/characters/characters.manifest.json`:
+   ```json
+   {
+     "characters": [
+       "que_paja_v1",
+       "el-paja",
+       "dj-scratch",
+       "b-boy-cumbia",
+       "rocker-punk",
+       "nuevo-personaje"
+     ]
+   }
+   ```
+5. **¡Listo!** El motor del juego descubrirá y cargará automáticamente al nuevo personaje, mostrándolo en el selector de personajes, en el combate contra CPU, en modo Versus y con todas sus estadísticas y movimientos sin tener que editar ningún archivo TypeScript ni componente React.
 
 ---
 
-## 🎨 FALLBACK PROCEDURAL AUTOMÁTICO
-Si aún no tienes listos todos los sprites PNG de un personaje:
-- El motor detectará si faltan los PNGs y utilizará automáticamente el **Procedural Pixel Fighter Fallback**.
-- En cuanto agregues los archivos `01.png`, `02.png`, etc., en su carpeta de sprites, el motor cargará los sprites reales de forma prioritaria e instantánea.
+## 🛡️ TOLERANCIA Y FALLBACK ROBUSTO
+- Si un frame o animación no se encuentra, el motor de sprites utiliza un fallback visual garantizado para que el combate nunca se rompa.
+- Todos los valores de velocidad, daño, hitboxes, tiempos de animación y retroceso se calculan matemáticamente desde `character.json`.

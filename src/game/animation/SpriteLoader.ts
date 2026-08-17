@@ -33,12 +33,12 @@ export class SpriteLoader {
   }
 
   /**
-   * Generates a cache key for character, variant, and animation action.
+   * Generates a cache key for character and animation action.
    */
   private getCacheKey(
     characterId: string,
-    variantId: string,
-    action: FighterActionAnimation
+    action: FighterActionAnimation,
+    variantId: string = 'default'
   ): string {
     return `${characterId}:${variantId}:${action}`;
   }
@@ -48,10 +48,11 @@ export class SpriteLoader {
    */
   public preloadTrack(
     character: CharacterData,
-    variant: ColorVariant,
-    action: FighterActionAnimation
+    action: FighterActionAnimation,
+    variant?: ColorVariant
   ): LoadedFrameSequence {
-    const key = this.getCacheKey(character.id, variant.id, action);
+    const variantId = variant?.id || 'default';
+    const key = this.getCacheKey(character.id, action, variantId);
     const existing = this.cache.get(key);
     if (existing) return existing;
 
@@ -64,7 +65,6 @@ export class SpriteLoader {
     };
 
     const charFolder = spriteConfig?.characterFolder || character.id.replace('_', '-');
-    const variantFolder = variant.variantFolder || 'default';
     let folderName = animConfig.folderName || action.toLowerCase().replace('_', '-');
     
     // Normalize folder name to ensure it looks under sprites/ if not specified
@@ -90,7 +90,7 @@ export class SpriteLoader {
       const padNum = i < 10 ? `0${i}` : `${i}`;
       const frameFileName = animConfig.customFrames?.[i - 1] || `${padNum}.png`;
 
-      // Path supports variant-specific overrides or standard character sprites
+      // Path to character sprite PNG
       const url = `${this.baseUrl}assets/characters/${charFolder}/${folderName}/${frameFileName}`;
       
       const img = new Image();
@@ -99,7 +99,7 @@ export class SpriteLoader {
       img.onload = () => {
         loadedCount++;
         if (loadedCount + errorCount >= frameCount) {
-          sequence.isReady = loadedCount === frameCount;
+          sequence.isReady = loadedCount > 0;
         }
       };
 
@@ -108,7 +108,7 @@ export class SpriteLoader {
         this.failedPaths.add(url);
         if (loadedCount + errorCount >= frameCount) {
           sequence.hasErrors = true;
-          sequence.isReady = loadedCount === frameCount; // only ready if all frames exist
+          sequence.isReady = loadedCount > 0;
         }
       };
 
@@ -123,9 +123,9 @@ export class SpriteLoader {
    */
   public getFrameImage(
     character: CharacterData,
-    variant: ColorVariant,
     action: FighterActionAnimation,
-    animTime: number
+    animTime: number,
+    variant?: ColorVariant
   ): {
     image: HTMLImageElement;
     frameIndex: number;
@@ -134,11 +134,12 @@ export class SpriteLoader {
     offsetX: number;
     offsetY: number;
   } | null {
-    const key = this.getCacheKey(character.id, variant.id, action);
+    const variantId = variant?.id || 'default';
+    const key = this.getCacheKey(character.id, action, variantId);
     let seq = this.cache.get(key);
 
     if (!seq) {
-      seq = this.preloadTrack(character, variant, action);
+      seq = this.preloadTrack(character, action, variant);
     }
 
     if (!seq || !seq.isReady || seq.frames.length === 0) {
@@ -176,9 +177,9 @@ export class SpriteLoader {
   }
 
   /**
-   * Preloads all main animations for a character and variant.
+   * Preloads all main animations for a character.
    */
-  public preloadCharacter(character: CharacterData, variant: ColorVariant) {
+  public preloadCharacter(character: CharacterData, variant?: ColorVariant) {
     const actions: FighterActionAnimation[] = [
       'IDLE',
       'WALK_FORWARD',
@@ -199,7 +200,7 @@ export class SpriteLoader {
     ];
 
     actions.forEach(action => {
-      this.preloadTrack(character, variant, action);
+      this.preloadTrack(character, action, variant);
     });
   }
 }

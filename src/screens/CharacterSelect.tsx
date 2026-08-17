@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { soundSystem } from '../audio/SoundSystem';
-import { CHARACTERS } from '../data/characters';
-import { CharacterData, ColorVariant, GameMode } from '../types';
-import { VariantSelectModal } from './VariantSelectModal';
+import { CharacterRegistry } from '../data/characters/CharacterRegistry';
+import { CharacterData, GameMode } from '../types';
 import { FighterAvatarSvg } from '../components/FighterAvatarSvg';
+import { Zap, Shield, Flame, Activity, Crosshair, ArrowLeft, Check, Lock } from 'lucide-react';
 
 interface CharacterSelectProps {
   mode: GameMode;
   onConfirmSelection: (
     p1Char: CharacterData,
-    p1Color: ColorVariant,
-    p2Char: CharacterData,
-    p2Color: ColorVariant
+    p2Char: CharacterData
   ) => void;
   onBack: () => void;
 }
@@ -21,43 +19,59 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({
   onConfirmSelection,
   onBack,
 }) => {
+  const [characters, setCharacters] = useState<CharacterData[]>(CharacterRegistry.getAll());
   const [p1Index, setP1Index] = useState<number>(0);
   const [p2Index, setP2Index] = useState<number>(1);
   const [p1Locked, setP1Locked] = useState<boolean>(false);
   const [p2Locked, setP2Locked] = useState<boolean>(false);
 
-  const [p1Color, setP1Color] = useState<ColorVariant>(CHARACTERS[0].colors[0]);
-  const [p2Color, setP2Color] = useState<ColorVariant>(
-    CHARACTERS[1]?.colors[0] || CHARACTERS[0].colors[1]
-  );
-
-  const [selectingColorFor, setSelectingColorFor] = useState<1 | 2 | null>(null);
-
-  const p1Char = CHARACTERS[p1Index] || CHARACTERS[0];
-  const p2Char = CHARACTERS[p2Index] || CHARACTERS[1];
-
-  // Update default color when index changes
+  // Sync with registry in case asynchronous manifest loads new characters
   useEffect(() => {
-    if (p1Char && p1Char.colors && p1Char.colors.length > 0) {
-      setP1Color(p1Char.colors[0]);
-    }
-  }, [p1Index]);
+    CharacterRegistry.loadFromManifest().then((loaded) => {
+      if (loaded && loaded.length > 0) {
+        setCharacters(CharacterRegistry.getAll());
+      }
+    });
+  }, []);
 
+  const p1Char = characters[p1Index] || characters[0];
+  const p2Char = characters[p2Index] || characters[1] || characters[0];
+
+  // Auto proceed when both are locked
   useEffect(() => {
-    if (p2Char && p2Char.colors && p2Char.colors.length > 0) {
-      setP2Color(p2Char.colors[0]);
+    if (mode === 'ARCADE' || mode === 'TRAINING') {
+      if (p1Locked) {
+        // In Arcade/Training, CPU randomly selects from other playable characters
+        const playable = characters.filter((c) => !c.isLocked && c.id !== p1Char.id);
+        const cpuChar = playable.length > 0 
+          ? playable[Math.floor(Math.random() * playable.length)] 
+          : p2Char;
+        
+        soundSystem.playFightBell();
+        const timer = setTimeout(() => {
+          onConfirmSelection(p1Char, cpuChar);
+        }, 600);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      // In Versus, wait for both P1 and P2
+      if (p1Locked && p2Locked) {
+        soundSystem.playFightBell();
+        const timer = setTimeout(() => {
+          onConfirmSelection(p1Char, p2Char);
+        }, 700);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [p2Index]);
+  }, [p1Locked, p2Locked, mode, p1Char, p2Char, characters, onConfirmSelection]);
 
-  // Keyboard navigation for character select
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectingColorFor !== null) return;
-
       const cols = 4;
-      const total = CHARACTERS.length;
+      const total = characters.length;
 
-      // P1 Navigation (W/A/S/D + F to confirm)
+      // P1 Navigation (W/A/S/D + F / Space to confirm)
       if (!p1Locked) {
         if (e.code === 'KeyD') {
           soundSystem.playMenuMove();
@@ -72,15 +86,15 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({
           soundSystem.playMenuMove();
           setP1Index((prev) => (prev - cols + total) % total);
         } else if (e.code === 'KeyF' || e.code === 'Space') {
-          if (!CHARACTERS[p1Index].isLocked) {
+          if (!characters[p1Index]?.isLocked) {
             soundSystem.playMenuSelect();
-            setSelectingColorFor(1);
+            setP1Locked(true);
           }
         }
       }
 
-      // P2 Navigation (Arrow Keys + K to confirm)
-      if (!p2Locked) {
+      // P2 Navigation in Versus (Arrows + K / Enter to confirm)
+      if (mode === 'VERSUS' && !p2Locked) {
         if (e.code === 'ArrowRight') {
           soundSystem.playMenuMove();
           setP2Index((prev) => (prev + 1) % total);
@@ -94,326 +108,346 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({
           soundSystem.playMenuMove();
           setP2Index((prev) => (prev - cols + total) % total);
         } else if (e.code === 'KeyK' || e.code === 'Enter') {
-          if (!CHARACTERS[p2Index].isLocked) {
+          if (!characters[p2Index]?.isLocked) {
             soundSystem.playMenuSelect();
-            setSelectingColorFor(2);
+            setP2Locked(true);
           }
+        }
+      }
+
+      if (e.code === 'Escape') {
+        if (p1Locked) {
+          setP1Locked(false);
+        } else if (p2Locked) {
+          setP2Locked(false);
+        } else {
+          onBack();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [p1Index, p2Index, p1Locked, p2Locked, selectingColorFor]);
+  }, [p1Locked, p2Locked, p1Index, p2Index, characters, mode, onBack]);
 
-  // Check if both players ready
-  useEffect(() => {
-    if (p1Locked && p2Locked) {
-      const timer = setTimeout(() => {
-        onConfirmSelection(p1Char, p1Color, p2Char, p2Color);
-      }, 700);
-      return () => clearTimeout(timer);
-    }
-  }, [p1Locked, p2Locked, p1Char, p1Color, p2Char, p2Color, onConfirmSelection]);
-
-  // If in Arcade mode, auto-lock P2 CPU
-  useEffect(() => {
-    if (mode === 'ARCADE' && p1Locked && !p2Locked) {
-      const available = CHARACTERS.filter((c) => !c.isLocked);
-      const randomCpu = available[Math.floor(Math.random() * available.length)];
-      const cpuIndex = CHARACTERS.findIndex((c) => c.id === randomCpu.id);
-      setP2Index(cpuIndex >= 0 ? cpuIndex : 1);
-      setP2Color(randomCpu.colors[0]);
-      setP2Locked(true);
-    }
-  }, [mode, p1Locked, p2Locked]);
-
-  const handleSelectSlot = (index: number, player: 1 | 2) => {
-    if (CHARACTERS[index].isLocked) return;
-    soundSystem.playMenuMove();
-
-    if (player === 1 && !p1Locked) {
-      setP1Index(index);
-      setSelectingColorFor(1);
-    } else if (player === 2 && !p2Locked) {
-      setP2Index(index);
-      setSelectingColorFor(2);
-    }
+  const renderStats = (char: CharacterData, themeColor: string) => {
+    const stats = char.stats || { strength: 7, speed: 7, defense: 7, reach: 7, technique: 7 };
+    return (
+      <div className="flex flex-col gap-1.5 text-xs font-mono">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1 text-zinc-400">
+            <Flame className="w-3.5 h-3.5" style={{ color: themeColor }} /> FUERZA
+          </span>
+          <div className="w-28 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+            <div className="h-full rounded-full" style={{ width: `${stats.strength * 10}%`, backgroundColor: themeColor }} />
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1 text-zinc-400">
+            <Zap className="w-3.5 h-3.5" style={{ color: themeColor }} /> VELOCIDAD
+          </span>
+          <div className="w-28 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+            <div className="h-full rounded-full" style={{ width: `${stats.speed * 10}%`, backgroundColor: themeColor }} />
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1 text-zinc-400">
+            <Shield className="w-3.5 h-3.5" style={{ color: themeColor }} /> DEFENSA
+          </span>
+          <div className="w-28 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+            <div className="h-full rounded-full" style={{ width: `${stats.defense * 10}%`, backgroundColor: themeColor }} />
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1 text-zinc-400">
+            <Crosshair className="w-3.5 h-3.5" style={{ color: themeColor }} /> ALCANCE
+          </span>
+          <div className="w-28 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+            <div className="h-full rounded-full" style={{ width: `${stats.reach * 10}%`, backgroundColor: themeColor }} />
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1 text-zinc-400">
+            <Activity className="w-3.5 h-3.5" style={{ color: themeColor }} /> TÉCNICA
+          </span>
+          <div className="w-28 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+            <div className="h-full rounded-full" style={{ width: `${stats.technique * 10}%`, backgroundColor: themeColor }} />
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="relative w-screen h-screen bg-[#0a0505] text-[#fff2e0] overflow-hidden select-none font-oswald">
+    <div className="relative w-screen h-screen bg-[#080505] text-white overflow-hidden select-none flex flex-col justify-between font-oswald p-5">
       {/* Background Shared Atmosphere */}
       <div className="bg" />
       <div className="grain" />
       <div className="vignette" />
 
-      {/* Back button & Roster Tag */}
-      <div
-        className="cs-back"
-        onClick={() => {
-          soundSystem.playMenuCancel();
-          onBack();
-        }}
-      >
-        ← VOLVER AL MENÚ
-      </div>
+      {/* TOP HEADER */}
+      <div className="flex items-center justify-between z-10 border-b border-zinc-800/80 pb-3">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/80 border border-zinc-700/80 rounded hover:border-[#ff5500] hover:text-white transition text-xs font-mono tracking-wider cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" /> VOLVER AL MENÚ
+        </button>
 
-      <div className="cs-roster-tag">
-        <div className="r1">ROSTER V1.0 · 8 SLOTS</div>
-        <div className="r2">CHALLENGER SELECT</div>
-      </div>
+        <div className="text-center">
+          <div className="text-xs font-mono tracking-[0.3em] text-[#ff8a2a] uppercase">QUE PAJA FIGHTER</div>
+          <div className="text-2xl md:text-3xl font-black italic tracking-wider text-white uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+            SELECCIONA TU <span className="text-[#ff5500]">LUCHADOR</span>
+          </div>
+        </div>
 
-      {/* Header */}
-      <div className="cs-header">
-        <div className="cs-title">SELECCIÓN DE LUCHADOR</div>
-        <div className="cs-sub">
-          {mode === 'ARCADE'
-            ? 'MODO 1P VS CPU · ARCADE MATCH'
-            : 'MODO 2P VERSUS · LOCAL DUAL INPUT'}
+        <div className="flex items-center gap-3 text-xs font-mono">
+          <span className="px-3 py-1 bg-zinc-900 border border-zinc-700 rounded text-zinc-300 uppercase">
+            MODO: <b className="text-[#ff8a2a]">{mode}</b>
+          </span>
         </div>
       </div>
 
-      {/* Body: 3-column chassis matching reference visual */}
-      <div className="cs-body">
-        {/* PANEL 1P (LEFT) */}
-        <div className="cs-panel p1">
-          <div className="cs-panel-head">
-            <span>{p1Locked ? '1P ✓ CONFIRMADO' : '1P SELECCIONANDO'}</span>
-            <span>WASD + F</span>
+      {/* MAIN 3-PANEL ROSTER STAGE */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center max-w-7xl w-full mx-auto z-10 py-3">
+        {/* 1P FIGHTER CARD (3.5 cols) */}
+        <div className="lg:col-span-3 h-full flex flex-col justify-between p-4 rounded bg-zinc-950/80 border-2 border-[#ff5500]/70 shadow-[0_0_20px_rgba(255,85,0,0.25)] relative overflow-hidden">
+          <div className="flex items-center justify-between mb-2">
+            <span className="px-2.5 py-0.5 rounded text-xs font-black bg-[#ff5500] text-black uppercase">
+              1P JUGADOR
+            </span>
+            {p1Locked ? (
+              <span className="flex items-center gap-1 text-xs font-bold text-green-400 bg-green-950/80 px-2 py-0.5 rounded border border-green-700">
+                <Check className="w-3.5 h-3.5" /> ¡CONFIRMADO!
+              </span>
+            ) : (
+              <span className="text-xs font-mono text-[#ff8a2a] animate-pulse">ELIGE CON WASD + F</span>
+            )}
           </div>
 
-          <div className="cs-portrait-box">
-            <FighterAvatarSvg
-              id="p1_portrait"
-              character={p1Char}
-              colorVariant={p1Color}
-              width={150}
-              height={215}
-            />
-          </div>
-
-          <div className="cs-fname">{p1Char.name}</div>
-          <div className="cs-ftitle">{p1Char.nickname}</div>
-          <div className="cs-fdesc">{p1Char.description}</div>
-
-          <div className="cs-stats">
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">FUERZA</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p1Char.stats.strength / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p1Char.stats.strength}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">VELOCIDAD</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p1Char.stats.speed / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p1Char.stats.speed}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">DEFENSA</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p1Char.stats.defense / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p1Char.stats.defense}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">ALCANCE</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p1Char.stats.reach / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p1Char.stats.reach}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">TÉCNICA</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p1Char.stats.technique / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p1Char.stats.technique}</div>
+          {/* 1P Avatar & Portrait */}
+          <div className="relative w-full h-44 rounded bg-black/60 border border-zinc-800 flex items-center justify-center overflow-hidden mb-3">
+            {p1Char.portraitImage ? (
+              <img
+                src={p1Char.portraitImage}
+                alt={p1Char.name}
+                className="w-full h-full object-cover object-top"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <FighterAvatarSvg characterId={p1Char.id} colorVariant={p1Char.colors?.[0]} className="w-32 h-32" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+            <div className="absolute bottom-2 left-2 right-2">
+              <div className="text-xs font-mono text-[#ff8a2a] uppercase">{p1Char.archetype || 'LUCHADOR'}</div>
+              <div className="text-xl font-black text-white leading-none">{p1Char.name}</div>
             </div>
           </div>
 
-          <div
-            className="cs-cta"
+          <p className="text-xs text-zinc-300 font-sans line-clamp-2 mb-3">{p1Char.description || p1Char.tagline}</p>
+
+          {/* 1P Stats */}
+          {renderStats(p1Char, '#ff5500')}
+
+          <button
             onClick={() => {
-              if (!p1Locked) {
+              if (!p1Char.isLocked) {
                 soundSystem.playMenuSelect();
-                setSelectingColorFor(1);
+                setP1Locked(!p1Locked);
               }
             }}
+            className={`w-full py-2.5 mt-3 rounded font-black tracking-wider text-sm transition uppercase cursor-pointer ${
+              p1Locked
+                ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                : 'bg-gradient-to-r from-[#ff5500] to-[#e11d48] text-white hover:brightness-110 shadow-[0_0_15px_rgba(255,85,0,0.4)]'
+            }`}
           >
-            {p1Locked ? '✓ LISTO PARA EL COMBATE' : 'ELEGIR COLOR (1P) ▶'}
-          </div>
+            {p1Locked ? 'CANCELAR ELECCIÓN' : 'CONFIRMAR 1P (ESPACIO/F)'}
+          </button>
         </div>
 
-        {/* CENTER 4x2 GRID */}
-        <div className="cs-grid-wrap">
-          <div className="cs-grid-label">
-            <span>P1: SELECCIONA CASILLA</span>
-            <span>P2: SELECCIONA CASILLA</span>
+        {/* CENTER: ROSTER GRID (5.5 cols) */}
+        <div className="lg:col-span-6 flex flex-col items-center justify-center p-3 rounded bg-zinc-900/40 border border-zinc-800">
+          <div className="text-xs font-mono text-zinc-400 uppercase tracking-widest mb-3">
+            SELECCIONA TU LUCHADOR · {characters.length} DISPONIBLES
           </div>
 
-          <div className="cs-grid">
-            {CHARACTERS.map((char, index) => {
-              const isP1Here = p1Index === index;
-              const isP2Here = p2Index === index;
+          {/* GRID */}
+          <div className="grid grid-cols-4 gap-3 w-full max-w-xl">
+            {characters.map((char, index) => {
+              const isP1 = p1Index === index;
+              const isP2 = p2Index === index && mode === 'VERSUS';
               const isLocked = char.isLocked;
-
-              if (isLocked) {
-                return (
-                  <div key={char.id} className="cs-slot locked">
-                    <span>?</span>
-                  </div>
-                );
-              }
 
               return (
                 <div
                   key={char.id}
                   onClick={() => {
-                    if (!p1Locked) handleSelectSlot(index, 1);
-                    else if (!p2Locked) handleSelectSlot(index, 2);
+                    if (isLocked) return;
+                    soundSystem.playMenuMove();
+                    if (!p1Locked) {
+                      setP1Index(index);
+                    } else if (mode === 'VERSUS' && !p2Locked) {
+                      setP2Index(index);
+                    }
                   }}
-                  className={`cs-slot ${isP1Here ? 'cur1' : ''} ${isP2Here ? 'cur2' : ''}`}
+                  className={`group relative aspect-square rounded-md overflow-hidden bg-zinc-950 border-2 cursor-pointer transition-all duration-150 ${
+                    isP1 && isP2
+                      ? 'border-yellow-400 ring-2 ring-yellow-400 scale-105 z-20 shadow-[0_0_20px_rgba(250,204,21,0.6)]'
+                      : isP1
+                      ? 'border-[#ff5500] ring-2 ring-[#ff5500] scale-105 z-20 shadow-[0_0_20px_rgba(255,85,0,0.6)]'
+                      : isP2
+                      ? 'border-cyan-400 ring-2 ring-cyan-400 scale-105 z-20 shadow-[0_0_20px_rgba(34,211,238,0.6)]'
+                      : 'border-zinc-800 hover:border-zinc-500 hover:scale-102'
+                  }`}
                 >
-                  {isP1Here && <span className="tagp t1">1P</span>}
-                  {isP2Here && <span className="tagp t2">2P</span>}
-                  <FighterAvatarSvg
-                    id={`mini_${char.id}_${index}`}
-                    character={char}
-                    width={60}
-                    height={86}
-                  />
+                  {/* Portrait or Avatar */}
+                  {char.portraitImage ? (
+                    <img
+                      src={char.portraitImage}
+                      alt={char.name}
+                      className="w-full h-full object-cover object-top"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-zinc-900">
+                      <FighterAvatarSvg characterId={char.id} colorVariant={char.colors?.[0]} className="w-16 h-16" />
+                    </div>
+                  )}
+
+                  {/* Overlay indicators */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+
+                  {/* Lock icon if locked */}
+                  {isLocked && (
+                    <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-zinc-500">
+                      <Lock className="w-6 h-6 mb-1" />
+                      <span className="text-[10px] font-mono">BLOQUEADO</span>
+                    </div>
+                  )}
+
+                  {/* Character Name Label */}
+                  <div className="absolute bottom-1 left-1 right-1 text-center">
+                    <span className="text-[11px] font-black tracking-tight text-white uppercase truncate block">
+                      {char.name}
+                    </span>
+                  </div>
+
+                  {/* 1P Indicator Badge */}
+                  {isP1 && (
+                    <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-[#ff5500] text-black font-black text-[10px] tracking-wider shadow">
+                      1P
+                    </div>
+                  )}
+
+                  {/* 2P Indicator Badge */}
+                  {isP2 && (
+                    <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-cyan-400 text-black font-black text-[10px] tracking-wider shadow">
+                      2P
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          <div className="cs-legend">
-            <span>
-              <b>P1:</b> W/A/S/D · F
+          <div className="mt-4 text-xs font-mono text-zinc-500 flex items-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded bg-[#ff5500]" /> 1P: WASD + F
             </span>
-            <span>
-              <b className="b2">P2:</b> FLECHAS · K
-            </span>
+            {mode === 'VERSUS' && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded bg-cyan-400" /> 2P: FLECHAS + K
+              </span>
+            )}
           </div>
         </div>
 
-        {/* PANEL 2P (RIGHT) */}
-        <div className="cs-panel p2">
-          <div className="cs-panel-head">
-            <span>{p2Locked ? '2P ✓ CONFIRMADO' : '2P SELECCIONANDO'}</span>
-            <span>FLECHAS + K</span>
+        {/* 2P FIGHTER CARD (3.5 cols) */}
+        <div className="lg:col-span-3 h-full flex flex-col justify-between p-4 rounded bg-zinc-950/80 border-2 border-cyan-500/70 shadow-[0_0_20px_rgba(6,182,212,0.25)] relative overflow-hidden">
+          <div className="flex items-center justify-between mb-2">
+            <span className="px-2.5 py-0.5 rounded text-xs font-black bg-cyan-400 text-black uppercase">
+              {mode === 'VERSUS' ? '2P JUGADOR' : 'CPU ADVERSARIO'}
+            </span>
+            {p2Locked || mode !== 'VERSUS' ? (
+              <span className="flex items-center gap-1 text-xs font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-700">
+                <Check className="w-3.5 h-3.5" /> ¡LISTO!
+              </span>
+            ) : (
+              <span className="text-xs font-mono text-cyan-400 animate-pulse">ELIGE CON FLECHAS + K</span>
+            )}
           </div>
 
-          <div className="cs-portrait-box">
-            <FighterAvatarSvg
-              id="p2_portrait"
-              character={p2Char}
-              colorVariant={p2Color}
-              width={150}
-              height={215}
-            />
-          </div>
-
-          <div className="cs-fname">{p2Char.name}</div>
-          <div className="cs-ftitle">{p2Char.nickname}</div>
-          <div className="cs-fdesc">{p2Char.description}</div>
-
-          <div className="cs-stats">
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">FUERZA</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p2Char.stats.strength / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p2Char.stats.strength}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">VELOCIDAD</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p2Char.stats.speed / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p2Char.stats.speed}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">DEFENSA</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p2Char.stats.defense / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p2Char.stats.defense}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">ALCANCE</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p2Char.stats.reach / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p2Char.stats.reach}</div>
-            </div>
-
-            <div className="cs-stat-row">
-              <div className="cs-stat-name">TÉCNICA</div>
-              <div className="cs-stat-bar">
-                <div
-                  className="cs-stat-fill"
-                  style={{ width: `${(p2Char.stats.technique / 10) * 100}%` }}
-                />
-              </div>
-              <div className="cs-stat-val">{p2Char.stats.technique}</div>
+          {/* 2P Avatar & Portrait */}
+          <div className="relative w-full h-44 rounded bg-black/60 border border-zinc-800 flex items-center justify-center overflow-hidden mb-3">
+            {p2Char.portraitImage ? (
+              <img
+                src={p2Char.portraitImage}
+                alt={p2Char.name}
+                className="w-full h-full object-cover object-top scale-x-[-1]"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <FighterAvatarSvg characterId={p2Char.id} colorVariant={p2Char.colors?.[0]} className="w-32 h-32 scale-x-[-1]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+            <div className="absolute bottom-2 left-2 right-2">
+              <div className="text-xs font-mono text-cyan-400 uppercase">{p2Char.archetype || 'LUCHADOR'}</div>
+              <div className="text-xl font-black text-white leading-none">{p2Char.name}</div>
             </div>
           </div>
 
-          <div
-            className="cs-cta"
-            onClick={() => {
-              if (!p2Locked) {
-                soundSystem.playMenuSelect();
-                setSelectingColorFor(2);
-              }
-            }}
-          >
-            {p2Locked ? '✓ LISTO PARA EL COMBATE' : 'ELEGIR COLOR (2P) ▶'}
-          </div>
+          <p className="text-xs text-zinc-300 font-sans line-clamp-2 mb-3">{p2Char.description || p2Char.tagline}</p>
+
+          {/* 2P Stats */}
+          {renderStats(p2Char, '#22d3ee')}
+
+          {mode === 'VERSUS' ? (
+            <button
+              onClick={() => {
+                if (!p2Char.isLocked) {
+                  soundSystem.playMenuSelect();
+                  setP2Locked(!p2Locked);
+                }
+              }}
+              className={`w-full py-2.5 mt-3 rounded font-black tracking-wider text-sm transition uppercase cursor-pointer ${
+                p2Locked
+                  ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:brightness-110 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+              }`}
+            >
+              {p2Locked ? 'CANCELAR ELECCIÓN' : 'CONFIRMAR 2P (ENTER/K)'}
+            </button>
+          ) : (
+            <div className="w-full py-2.5 mt-3 rounded bg-zinc-900 border border-zinc-800 text-center font-mono text-xs text-zinc-400 uppercase">
+              SELECCIÓN AUTOMÁTICA DE CPU
+            </div>
+          )}
         </div>
       </div>
 
-      {/* FOOTER */}
-      <div className="cs-footer">AMBOS JUGADORES DEBEN CONFIRMAR PARA INICIAR</div>
+      {/* FOOTER NAVIGATION GUIDE */}
+      <div className="flex items-center justify-between text-xs font-mono text-zinc-400 border-t border-zinc-800/80 pt-3 z-10">
+        <div>PAJAS FIGHTER · QUE PAJA RECORDS</div>
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-0.5 bg-[#ff5500] text-black rounded font-bold">ESPACIO / F</span>
+          <span>BLOQUEAR 1P</span>
+          {mode === 'VERSUS' && (
+            <>
+              <span className="px-2 py-0.5 bg-cyan-400 text-black rounded font-bold">ENTER / K</span>
+              <span>BLOQUEAR 2P</span>
+            </>
+          )}
+          <span className="px-2 py-0.5 bg-zinc-800 text-white rounded font-bold">ESC</span>
+          <span>VOLVER</span>
+        </div>
+      </div>
 
       {/* METAL BORDER & CORNER BRACKETS */}
       <div className="metal-border" />
@@ -421,30 +455,6 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({
       <div className="corner tr" />
       <div className="corner bl" />
       <div className="corner br" />
-
-      {/* VARIANT SELECT MODAL */}
-      {selectingColorFor !== null && (
-        <VariantSelectModal
-          playerNumber={selectingColorFor}
-          character={selectingColorFor === 1 ? p1Char : p2Char}
-          selectedColor={selectingColorFor === 1 ? p1Color : p2Color}
-          onSelectColor={(color) => {
-            if (selectingColorFor === 1) {
-              setP1Color(color);
-            } else {
-              setP2Color(color);
-            }
-          }}
-          onConfirm={() => {
-            if (selectingColorFor === 1) {
-              setP1Locked(true);
-            } else {
-              setP2Locked(true);
-            }
-            setSelectingColorFor(null);
-          }}
-        />
-      )}
     </div>
   );
 };

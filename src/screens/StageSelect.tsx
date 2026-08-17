@@ -5,9 +5,9 @@ import { CharacterData, ColorVariant, StageData } from '../types';
 
 interface StageSelectProps {
   p1Char: CharacterData;
-  p1Color: ColorVariant;
+  p1Color?: ColorVariant;
   p2Char: CharacterData;
-  p2Color: ColorVariant;
+  p2Color?: ColorVariant;
   onConfirmStage: (stage: StageData) => void;
   onBack: () => void;
 }
