@@ -1,0 +1,22 @@
+{
+  "id": "nuevo_escenario",
+  "name": "NUEVO ESCENARIO",
+  "location": "Que Paja City — Distrito Sonoro",
+  "description": "Descripción de la atmósfera, temática e iluminación del nuevo escenario.",
+  "previewColor": "#ff4e00",
+  "groundY": 100,
+  "width": 1400,
+  "height": 600,
+  "theme": {
+    "skyColor": "#111018",
+    "groundColor": "#1f1b29",
+    "ambientColor": "#ff4e00",
+    "accentColor": "#fbbf24"
+  },
+  "parallaxLayers": [
+    { "speed": 0.1, "type": "sky", "color": "#09080e" },
+    { "speed": 0.25, "type": "buildings", "color": "#161324" },
+    { "speed": 0.5, "type": "lights", "color": "#ff4e00" },
+    { "speed": 0.8, "type": "crowd", "color": "#262038" }
+  ]
+}

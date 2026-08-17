@@ -1,0 +1,22 @@
+{
+  "id": "qp_studio",
+  "name": "ESTUDIO UNDERGROUND",
+  "location": "Que Paja Records HQ — Sala A",
+  "description": "El corazón analógico del sello discográfico. Cintas maestras, vinilos, luces ámbar cálidas y monitores de estudio que vibran con los graves.",
+  "previewColor": "#f97316",
+  "groundY": 100,
+  "width": 1400,
+  "height": 600,
+  "theme": {
+    "skyColor": "#111018",
+    "groundColor": "#1f1b29",
+    "ambientColor": "#f97316",
+    "accentColor": "#fbbf24"
+  },
+  "parallaxLayers": [
+    { "speed": 0.1, "type": "sky", "color": "#09080e" },
+    { "speed": 0.25, "type": "buildings", "color": "#161324" },
+    { "speed": 0.5, "type": "lights", "color": "#f97316" },
+    { "speed": 0.8, "type": "crowd", "color": "#262038" }
+  ]
+}

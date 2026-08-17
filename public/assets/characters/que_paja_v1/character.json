@@ -1,0 +1,90 @@
+{
+  "id": "que_paja_v1",
+  "name": "QUE PAJA V1",
+  "nickname": "EL CLÁSICO V3",
+  "archetype": "STREET BRAWLER",
+  "tagline": "El diseño original e icónico de v3.png",
+  "description": "El auténtico e inconfundible Que Paja con corte de pelo hongo/champiñón, lentes oscuros, polera negra con logo rockero Metallica en verde neón, joggers anchos con cordones blancos y zapatillas de skate bajas en blanco y negro. Pose de garra marcial y combate callejero demoledor.",
+  "stats": {
+    "strength": 9,
+    "speed": 8,
+    "defense": 8,
+    "reach": 7,
+    "technique": 9
+  },
+  "portraitBg": "linear-gradient(135deg, #15803d 0%, #052e16 100%)",
+  "portraitImage": "assets/characters/que_paja_v1/portrait.png",
+  "isLocked": false,
+  "spriteConfig": {
+    "characterFolder": "que_paja_v1",
+    "baseScale": 1.0,
+    "offsetX": 0,
+    "offsetY": 0,
+    "pivotX": 0.5,
+    "pivotY": 1.0,
+    "animations": {
+      "IDLE": { "folderName": "sprites/idle", "frameCount": 4, "frameRate": 8, "loop": true },
+      "WALK_FORWARD": { "folderName": "sprites/walk", "frameCount": 6, "frameRate": 10, "loop": true },
+      "WALK_BACKWARD": { "folderName": "sprites/walk", "frameCount": 6, "frameRate": 8, "loop": true },
+      "CROUCH": { "folderName": "sprites/crouch", "frameCount": 2, "frameRate": 6, "loop": false },
+      "JUMP": { "folderName": "sprites/jump", "frameCount": 3, "frameRate": 10, "loop": false },
+      "LIGHT_PUNCH": { "folderName": "sprites/punch-light", "frameCount": 3, "frameRate": 14, "loop": false },
+      "HEAVY_PUNCH": { "folderName": "sprites/punch-heavy", "frameCount": 4, "frameRate": 12, "loop": false },
+      "LIGHT_KICK": { "folderName": "sprites/kick-light", "frameCount": 3, "frameRate": 14, "loop": false },
+      "HEAVY_KICK": { "folderName": "sprites/kick-heavy", "frameCount": 4, "frameRate": 11, "loop": false },
+      "SPECIAL": { "folderName": "sprites/special", "frameCount": 5, "frameRate": 12, "loop": false },
+      "HIT_LIGHT": { "folderName": "sprites/hit", "frameCount": 2, "frameRate": 12, "loop": false },
+      "BLOCK": { "folderName": "sprites/block", "frameCount": 2, "frameRate": 8, "loop": false },
+      "KNOCKDOWN": { "folderName": "sprites/knockdown", "frameCount": 3, "frameRate": 10, "loop": false },
+      "GET_UP": { "folderName": "sprites/get-up", "frameCount": 2, "frameRate": 10, "loop": false },
+      "VICTORY": { "folderName": "sprites/victory", "frameCount": 4, "frameRate": 8, "loop": true },
+      "DEFEAT": { "folderName": "sprites/defeat", "frameCount": 2, "frameRate": 6, "loop": false }
+    }
+  },
+  "colors": [
+    {
+      "id": "default",
+      "name": "Original V3 (Metallica)",
+      "variantFolder": "default",
+      "primaryColor": "#161616",
+      "secondaryColor": "#22c55e",
+      "hairColor": "#0a0a0c",
+      "skinColor": "#a16238",
+      "pantColor": "#18181b",
+      "accentColor": "#4ade80"
+    },
+    {
+      "id": "flame_orange",
+      "name": "Flame Orange",
+      "variantFolder": "orange",
+      "primaryColor": "#18181b",
+      "secondaryColor": "#ff5500",
+      "hairColor": "#0a0a0c",
+      "skinColor": "#a16238",
+      "pantColor": "#27272a",
+      "accentColor": "#ff8a2a"
+    },
+    {
+      "id": "crimson_metal",
+      "name": "Crimson Metal",
+      "variantFolder": "red",
+      "primaryColor": "#2a0808",
+      "secondaryColor": "#ef4444",
+      "hairColor": "#0f0808",
+      "skinColor": "#a16238",
+      "pantColor": "#180808",
+      "accentColor": "#f87171"
+    },
+    {
+      "id": "cyber_wave",
+      "name": "Cyber Wave",
+      "variantFolder": "blue",
+      "primaryColor": "#081d2e",
+      "secondaryColor": "#00f2ff",
+      "hairColor": "#031522",
+      "skinColor": "#a16238",
+      "pantColor": "#0a1724",
+      "accentColor": "#38bdf8"
+    }
+  ]
+}

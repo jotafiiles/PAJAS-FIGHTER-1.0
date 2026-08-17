@@ -1,0 +1,6 @@
+{
+  "name": "Pajas Fighter",
+  "description": "Videojuego de lucha 2D arcade desarrollado por Que Paja Records. Sistema data-driven profesional con selector arcade dinámico, variantes de personajes, animaciones por frames y combate local 1v1 y 1P vs CPU.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
